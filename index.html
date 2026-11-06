@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Checklist Engine</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #131b2e;
+      --card-border: #243048;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --text: #f1f5f9;
+      --text-muted: #8493a8;
+      --accent: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at top, #18243c 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 2rem 1rem 4rem 1rem;
+    }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 740px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    header {
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      color: #fff;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: 0.25rem;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Tabs Bar */
+    .tabs-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 1.25rem;
+    }
+
+    .tabs-wrapper::-webkit-scrollbar {
+      height: 4px;
+    }
+
+    .tabs-wrapper::-webkit-scrollbar-thumb {
+      background: var(--card-border);
+      border-radius: 4px;
+    }
+
+    .tab {
+      background: #0d1424;
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .tab:hover {
+      background: #172138;
+      color: #fff;
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: #04101e;
+      border-color: var(--primary);
+    }
+
+    .tab .tab-del {
+      font-size: 0.8rem;
+      opacity: 0.6;
+      padding: 0 2px;
+      border-radius: 3px;
+    }
+
+    .tab .tab-del:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .btn-new-tab {
+      background: #1e293b;
+      color: var(--text-muted);
+      border: 1px dashed var(--card-border);
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .btn-new-tab:hover {
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    /* Progress bar */
+    .progress-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 9px;
+      background: #090e1a;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      width: 0%;
+      transition: width 0.35s ease;
+    }
+
+    /* Bulk drawer */
+    details {
+      margin-bottom: 1.25rem;
+      background: rgba(10, 15, 26, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    summary {
+      padding: 0.75rem 1rem;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--primary);
+      user-select: none;
+    }
+
+    summary:hover {
+      background: rgba(56, 189, 248, 0.05);
+    }
+
+    .bulk-content {
+      padding: 1rem;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      background: #080d18;
+      border: 1px solid var(--card-border);
+      border-radius: 6px;
+      padding: 0.75rem;
+      color: #fff;
+      font-size: 0.9rem;
+      resize: vertical;
+      outline: none;
+    }
+
+    textarea:focus, input:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    }
+
+    /* Quick Single Item Input */
+    .input-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .input-main {
+      flex: 1 1 240px;
+      background: #080d18;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    .input-priority, .input-date {
+      background: #080d18;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.75rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-weight: 600;
+      font-size: 0.88rem;
+      transition: background 0.15s ease, opacity 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.35rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #04101e;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #243048;
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #334155;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--card-border);
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-outline:hover {
+      color: #fff;
+      border-color: #475569;
+    }
+
+    .btn-danger-outline {
+      background: transparent;
+      color: var(--danger);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .btn-danger-outline:hover {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: var(--danger);
+    }
+
+    /* Search & Filter Toolbar */
+    .toolbar-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+
+    .search-box {
+      flex: 1 1 200px;
+      background: #080d18;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.45rem 0.75rem;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .toolbar-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.25rem;
+      background: #080d18;
+      padding: 0.25rem;
+      border-radius: 8px;
+      border: 1px solid var(--card-border);
+    }
+
+    .filter-btn {
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0.35rem 0.7rem;
+      font-size: 0.8rem;
+      border-radius: 6px;
+    }
+
+    .filter-btn.active {
+      background: var(--primary);
+      color: #04101e;
+      font-weight: 700;
+    }
+
+    .action-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    /* Checklist List & Items */
+    .checklist {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    .checklist::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .checklist::-webkit-scrollbar-thumb {
+      background: var(--card-border);
+      border-radius: 4px;
+    }
+
+    .item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #0d1526;
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 0.65rem 0.9rem;
+      transition: background 0.15s, border-color 0.15s, opacity 0.2s;
+      cursor: grab;
+    }
+
+    .item:active {
+      cursor: grabbing;
+    }
+
+    .item.dragging {
+      opacity: 0.35;
+      background: #17243d;
+      border-style: dashed;
+    }
+
+    .item.drag-over {
+      border-top: 2px solid var(--primary);
+    }
+
+    .item:hover {
+      border-color: #3b4d70;
+      background: #111a30;
+    }
+
+    .item.completed {
+      opacity: 0.5;
+      background: #090e1a;
+    }
+
+    .item.completed .item-text {
+      text-decoration: line-through;
+      color: var(--text-muted);
+    }
+
+    .drag-handle {
+      color: #475569;
+      cursor: grab;
+      user-select: none;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .checkbox {
+      width: 1.25rem;
+      height: 1.25rem;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .item-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-width: 0;
+    }
+
+    .item-text {
+      font-size: 0.95rem;
+      word-break: break-word;
+    }
+
+    .item-meta {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      font-size: 0.75rem;
+    }
+
+    .badge-priority {
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 0.65rem;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-high {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .badge-med {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+    }
+
+    .badge-low {
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+
+    .badge-date {
+      color: var(--text-muted);
+    }
+
+    .badge-date.overdue {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .btn-delete {
+      background: transparent;
+      color: var(--text-muted);
+      padding: 0.25rem 0.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      line-height: 1;
+    }
+
+    .btn-delete:hover {
+      color: var(--danger);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      border: 1px solid var(--primary);
+      color: #fff;
+      padding: 0.65rem 1.1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s ease;
+      pointer-events: none;
+      z-index: 10000;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="confetti-canvas"></canvas>
+  <div class="toast" id="toast"></div>
+
+  <div class="container">
+    <header>
+      <h1>Digital Checklist Engine</h1>
+      <p>Automated task management for Karl</p>
+    </header>
+
+    <div class="card">
+      <!-- Tabs Navigation -->
+      <div class="tabs-wrapper" id="tabs-bar">
+        <!-- Rendered by JS -->
+        <button class="btn-new-tab" onclick="promptNewList()">+ New List</button>
+      </div>
+
+      <!-- Live Progress Bar -->
+      <div class="progress-section">
+        <div class="progress-meta">
+          <span id="progress-text">0 / 0 items done</span>
+          <span id="progress-percent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+
+      <!-- Bulk Text Paste Drawer -->
+      <details id="bulk-drawer">
+        <summary>+ Paste Raw List (Bulk Import)</summary>
+        <div class="bulk-content">
+          <textarea id="bulk-input" placeholder="Paste items here (one per line, bullets or numbers stripped automatically)..."></textarea>
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+            <button class="btn-secondary" onclick="document.getElementById('bulk-input').value = ''">Clear</button>
+            <button class="btn-primary" onclick="importBulkList()">Import to Current List</button>
+          </div>
+        </div>
+      </details>
+
+      <!-- Quick Add Input Form -->
+      <div class="input-form">
+        <input type="text" class="input-main" id="single-input" placeholder="Add an item to current list..." onkeydown="handleInputKey(event)" />
+        <select class="input-priority" id="single-priority">
+          <option value="none">Priority: None</option>
+          <option value="high">High</option>
+          <option value="med">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <input type="date" class="input-date" id="single-date" title="Optional due date" />
+        <button class="btn-primary" onclick="addSingleItem()">Add</button>
+      </div>
+
+      <!-- Search & Filters Toolbar -->
+      <div class="toolbar-top">
+        <input type="text" class="search-box" id="search-input" placeholder="🔍 Search tasks..." oninput="handleSearch(this.value)" />
+        <div class="action-group">
+          <button class="btn-outline" onclick="copyRemainingToClipboard()">📋 Copy Remaining</button>
+          <button class="btn-outline" onclick="exportJSON()">💾 Export JSON</button>
+          <button class="btn-outline" onclick="triggerImportJSON()">📂 Import JSON</button>
+          <input type="file" id="json-file-input" style="display: none;" accept=".json" onchange="importJSON(event)" />
+        </div>
+      </div>
+
+      <div class="toolbar-bottom">
+        <div class="filters">
+          <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setFilter('active', this)">To Do</button>
+          <button class="filter-btn" onclick="setFilter('completed', this)">Done</button>
+        </div>
+        <div class="action-group">
+          <button class="btn-outline" onclick="renameCurrentList()">Rename List</button>
+          <button class="btn-danger-outline" onclick="clearCompleted()">Clear Done</button>
+          <button class="btn-danger-outline" onclick="clearCurrentList()">Reset List</button>
+        </div>
+      </div>
+
+      <!-- Checklist Items Container -->
+      <ul class="checklist" id="checklist"></ul>
+
+      <div class="empty-state" id="empty-state" style="display: none;">
+        No tasks match your criteria. Add one above.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "havoc_checklist_engine_v2";
+
+    // Application state
+    let state = loadState();
+    let currentFilter = "all";
+    let searchQuery = "";
+    let draggedIndex = null;
+    let audioCtx = null;
+
+    function defaultState() {
+      return {
+        activeListId: "default",
+        lists: [
+          {
+            id: "default",
+            name: "Main List",
+            items: [
+              { id: "1", text: "Test the digital checklist engine", done: false, priority: "high", dueDate: "" },
+              { id: "2", text: "Marvel at Havoc's superior design", done: true, priority: "med", dueDate: "" }
+            ]
+          }
+        ]
+      };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultState();
+        const parsed = JSON.parse(raw);
+        if (!parsed.lists || parsed.lists.length === 0) return defaultState();
+        return parsed;
+      } catch (e) {
+        return defaultState();
+      }
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      render();
+    }
+
+    function getActiveList() {
+      let list = state.lists.find(l => l.id === state.activeListId);
+      if (!list) {
+        state.activeListId = state.lists[0].id;
+        list = state.lists[0];
+      }
+      return list;
+    }
+
+    // Audio synthesizer
+    function playBeep(freq = 440, type = "sine", duration = 0.08) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (err) {}
+    }
+
+    function playVictoryChord() {
+      const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+      notes.forEach((freq, idx) => {
+        setTimeout(() => playBeep(freq, "triangle", 0.35), idx * 110);
+      });
+    }
+
+    // Confetti System
+    const canvas = document.getElementById("confetti-canvas");
+    const ctx = canvas.getContext("2d");
+    let confettiParticles = [];
+    let confettiAnimation = null;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    function triggerConfetti() {
+      confettiParticles = [];
+      const colors = ["#38bdf8", "#22c55e", "#f59e0b", "#ec4899", "#a855f7", "#3b82f6"];
+      for (let i = 0; i < 90; i++) {
+        confettiParticles.push({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+          vx: (Math.random() - 0.5) * 18,
+          vy: (Math.random() - 0.7) * 20,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          size: Math.random() * 8 + 4,
+          tilt: Math.random() * 10,
+          tiltAngle: 0,
+          tiltAngleInc: Math.random() * 0.08 + 0.04,
+          life: 120
+        });
+      }
+      if (!confettiAnimation) {
+        animateConfetti();
+      }
+    }
+
+    function animateConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      confettiParticles = confettiParticles.filter(p => p.life > 0);
+
+      confettiParticles.forEach(p => {
+        p.life--;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.45; // Gravity
+        p.tiltAngle += p.tiltAngleInc;
+        p.tilt = Math.sin(p.tiltAngle) * 12;
+
+        ctx.beginPath();
+        ctx.lineWidth = p.size;
+        ctx.strokeStyle = p.color;
+        ctx.moveTo(p.x + p.tilt + p.size / 2, p.y);
+        ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.size / 2);
+        ctx.stroke();
+      });
+
+      if (confettiParticles.length > 0) {
+        confettiAnimation = requestAnimationFrame(animateConfetti);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        confettiAnimation = null;
+      }
+    }
+
+    // List & Tab Actions
+    function promptNewList() {
+      const name = prompt("Enter a name for the new list:", "New List");
+      if (!name || !name.trim()) return;
+      const newList = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        items: []
+      };
+      state.lists.push(newList);
+      state.activeListId = newList.id;
+      saveState();
+      showToast(`Created list: ${name.trim()}`);
+    }
+
+    function switchList(id) {
+      state.activeListId = id;
+      searchQuery = "";
+      document.getElementById("search-input").value = "";
+      saveState();
+    }
+
+    function renameCurrentList() {
+      const list = getActiveList();
+      const updated = prompt("Rename list:", list.name);
+      if (!updated || !updated.trim()) return;
+      list.name = updated.trim();
+      saveState();
+    }
+
+    function deleteList(id, e) {
+      if (e) e.stopPropagation();
+      if (state.lists.length <= 1) {
+        alert("You must keep at least one checklist.");
+        return;
+      }
+      const target = state.lists.find(l => l.id === id);
+      if (confirm(`Delete the entire list "${target.name}"?`)) {
+        state.lists = state.lists.filter(l => l.id !== id);
+        if (state.activeListId === id) {
+          state.activeListId = state.lists[0].id;
+        }
+        saveState();
+        showToast("List deleted");
+      }
+    }
+
+    // Task Item Actions
+    function addSingleItem() {
+      const input = document.getElementById("single-input");
+      const priority = document.getElementById("single-priority").value;
+      const dueDate = document.getElementById("single-date").value;
+      const text = input.value.trim();
+      if (!text) return;
+
+      const list = getActiveList();
+      list.items.push({
+        id: Date.now().toString(),
+        text,
+        done: false,
+        priority: priority,
+        dueDate: dueDate
+      });
+
+      input.value = "";
+      document.getElementById("single-priority").value = "none";
+      document.getElementById("single-date").value = "";
+      playBeep(520, "sine", 0.05);
+      saveState();
+    }
+
+    function handleInputKey(e) {
+      if (e.key === "Enter") addSingleItem();
+    }
+
+    function importBulkList() {
+      const raw = document.getElementById("bulk-input").value;
+      const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length === 0) return;
+
+      const list = getActiveList();
+      lines.forEach((line, idx) => {
+        const cleaned = line.replace(/^([*\-•]|\d+[\.\)])\s+/, "");
+        list.items.push({
+          id: `${Date.now()}_${idx}`,
+          text: cleaned,
+          done: false,
+          priority: "none",
+          dueDate: ""
+        });
+      });
+
+      document.getElementById("bulk-input").value = "";
+      document.getElementById("bulk-drawer").removeAttribute("open");
+      saveState();
+      showToast(`Imported ${lines.length} items`);
+    }
+
+    function toggleItem(id) {
+      const list = getActiveList();
+      const item = list.items.find(i => i.id === id);
+      if (item) {
+        item.done = !item.done;
+        if (item.done) {
+          playBeep(660, "sine", 0.06);
+          // Check if list is now 100% complete
+          const allDone = list.items.length > 0 && list.items.every(i => i.done);
+          if (allDone) {
+            triggerConfetti();
+            playVictoryChord();
+            showToast("🎉 100% Completed! Miracles do happen.");
+          }
+        } else {
+          playBeep(340, "sine", 0.05);
+        }
+        saveState();
+      }
+    }
+
+    function deleteItem(id) {
+      const list = getActiveList();
+      list.items = list.items.filter(i => i.id !== id);
+      saveState();
+    }
+
+    function clearCompleted() {
+      const list = getActiveList();
+      const count = list.items.filter(i => i.done).length;
+      list.items = list.items.filter(i => !i.done);
+      saveState();
+      showToast(`Cleared ${count} completed items`);
+    }
+
+    function clearCurrentList() {
+      const list = getActiveList();
+      if (list.items.length === 0) return;
+      if (confirm(`Clear all items in "${list.name}"?`)) {
+        list.items = [];
+        saveState();
+      }
+    }
+
+    // Filter & Search
+    function setFilter(filter, el) {
+      currentFilter = filter;
+      document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
+      el.classList.add("active");
+      render();
+    }
+
+    function handleSearch(val) {
+      searchQuery = val.toLowerCase().trim();
+      render();
+    }
+
+    // Export & Share
+    function copyRemainingToClipboard() {
+      const list = getActiveList();
+      const remaining = list.items.filter(i => !i.done);
+      if (remaining.length === 0) {
+        showToast("No remaining tasks to copy!");
+        return;
+      }
+      const formatted = `# ${list.name} (Remaining Tasks)\n` +
+        remaining.map(i => `- [ ] ${i.text}${i.priority !== 'none' ? ` [${i.priority.toUpperCase()}]` : ''}${i.dueDate ? ` (Due: ${i.dueDate})` : ''}`).join("\n");
+
+      navigator.clipboard.writeText(formatted).then(() => {
+        showToast("Copied remaining items to clipboard!");
+      });
+    }
+
+    function exportJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+      const downloadAnchor = document.createElement("a");
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `checklist_backup_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Checklist data exported");
+    }
+
+    function triggerImportJSON() {
+      document.getElementById("json-file-input").click();
+    }
+
+    function importJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed && parsed.lists) {
+            state = parsed;
+            saveState();
+            showToast("Backup restored successfully!");
+          } else {
+            alert("Invalid JSON format for checklist backup.");
+          }
+        } catch (err) {
+          alert("Error parsing JSON file.");
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2800);
+    }
+
+    // Drag and Drop
+    function handleDragStart(e, index) {
+      draggedIndex = index;
+      e.target.classList.add("dragging");
+      e.dataTransfer.effectAllowed = "move";
+    }
+
+    function handleDragEnd(e) {
+      e.target.classList.remove("dragging");
+      document.querySelectorAll(".item").forEach(item => item.classList.remove("drag-over"));
+    }
+
+    function handleDragOver(e, index) {
+      e.preventDefault();
+      const listEl = document.getElementById("checklist");
+      const children = Array.from(listEl.children);
+      children.forEach(c => c.classList.remove("drag-over"));
+      if (children[index]) {
+        children[index].classList.add("drag-over");
+      }
+    }
+
+    function handleDrop(e, targetIndex) {
+      e.preventDefault();
+      if (draggedIndex === null || draggedIndex === targetIndex) return;
+      const list = getActiveList();
+      const itemToMove = list.items.splice(draggedIndex, 1)[0];
+      list.items.splice(targetIndex, 0, itemToMove);
+      draggedIndex = null;
+      saveState();
+    }
+
+    // Rendering
+    function render() {
+      renderTabs();
+      renderList();
+    }
+
+    function renderTabs() {
+      const tabsBar = document.getElementById("tabs-bar");
+      tabsBar.innerHTML = "";
+
+      state.lists.forEach(l => {
+        const tab = document.createElement("div");
+        tab.className = `tab ${l.id === state.activeListId ? "active" : ""}`;
+        tab.onclick = () => switchList(l.id);
+
+        const title = document.createElement("span");
+        title.textContent = l.name;
+        tab.appendChild(title);
+
+        if (state.lists.length > 1) {
+          const delBtn = document.createElement("span");
+          delBtn.className = "tab-del";
+          delBtn.textContent = "✕";
+          delBtn.title = "Delete list";
+          delBtn.onclick = (e) => deleteList(l.id, e);
+          tab.appendChild(delBtn);
+        }
+
+        tabsBar.appendChild(tab);
+      });
+
+      const newBtn = document.createElement("button");
+      newBtn.className = "btn-new-tab";
+      newBtn.textContent = "+ New List";
+      newBtn.onclick = promptNewList;
+      tabsBar.appendChild(newBtn);
+    }
+
+    function renderList() {
+      const list = getActiveList();
+      const listEl = document.getElementById("checklist");
+      const emptyEl = document.getElementById("empty-state");
+      listEl.innerHTML = "";
+
+      const total = list.items.length;
+      const completed = list.items.filter(i => i.done).length;
+      const percent = total === 0 ? 0 : Math.round((completed / total) * 100);
+
+      document.getElementById("progress-text").textContent = `${completed} / ${total} items done`;
+      document.getElementById("progress-percent").textContent = `${percent}%`;
+      document.getElementById("progress-fill").style.width = `${percent}%`;
+
+      const todayStr = new Date().toISOString().slice(0, 10);
+
+      // Filtering and Searching
+      const filtered = list.items
+        .map((item, originalIndex) => ({ ...item, originalIndex }))
+        .filter(item => {
+          if (currentFilter === "active" && item.done) return false;
+          if (currentFilter === "completed" && !item.done) return false;
+          if (searchQuery && !item.text.toLowerCase().includes(searchQuery)) return false;
+          return true;
+        });
+
+      if (filtered.length === 0) {
+        emptyEl.style.display = "block";
+      } else {
+        emptyEl.style.display = "none";
+        filtered.forEach((item, displayIdx) => {
+          const li = document.createElement("li");
+          li.className = `item ${item.done ? "completed" : ""}`;
+          li.draggable = true;
+
+          // Drag and drop event listeners
+          li.ondragstart = (e) => handleDragStart(e, item.originalIndex);
+          li.ondragend = handleDragEnd;
+          li.ondragover = (e) => handleDragOver(e, displayIdx);
+          li.ondrop = (e) => handleDrop(e, item.originalIndex);
+
+          let priorityHtml = "";
+          if (item.priority && item.priority !== "none") {
+            priorityHtml = `<span class="badge-priority badge-${item.priority}">${item.priority}</span>`;
+          }
+
+          let dateHtml = "";
+          if (item.dueDate) {
+            const isOverdue = !item.done && item.dueDate < todayStr;
+            dateHtml = `<span class="badge-date ${isOverdue ? 'overdue' : ''}">📅 ${item.dueDate}${isOverdue ? ' (Overdue)' : ''}</span>`;
+          }
+
+          li.innerHTML = `
+            <span class="drag-handle" title="Drag to reorder">⠿</span>
+            <input type="checkbox" class="checkbox" ${item.done ? "checked" : ""} onchange="toggleItem('${item.id}')" />
+            <div class="item-content">
+              <span class="item-text">${escapeHtml(item.text)}</span>
+              ${(priorityHtml || dateHtml) ? `<div class="item-meta">${priorityHtml} ${dateHtml}</div>` : ''}
+            </div>
+            <button class="btn-delete" title="Delete item" onclick="deleteItem('${item.id}')">✕</button>
+          `;
+          listEl.appendChild(li);
+        });
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
